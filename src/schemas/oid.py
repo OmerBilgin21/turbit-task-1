@@ -1,4 +1,3 @@
-# Stack Overflow answer to pydantic v2 ObjectId serialization https://stackoverflow.com/a/76837550
 from typing import Annotated, Any
 
 from bson import ObjectId

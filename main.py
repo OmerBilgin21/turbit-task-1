@@ -1,3 +1,5 @@
+import os
+
 import uvicorn
 from bson import ObjectId
 from fastapi import FastAPI, HTTPException
@@ -91,10 +93,19 @@ async def posts_of_person(
 
 
 if __name__ == "__main__":
-	uvicorn.run(
-		"main:app",
-		host="0.0.0.0",
-		port=8000,
-		reload=True,
-		log_level="info",
-	)
+	env = os.environ.get("ENV", "dev")
+	if env == "dev":
+		uvicorn.run(
+			"main:app",
+			host="0.0.0.0",
+			port=8000,
+			reload=True,
+			log_level="info",
+		)
+	else:
+		uvicorn.run(
+			"main:app",
+			host="0.0.0.0",
+			port=8000,
+			log_level="info",
+		)
