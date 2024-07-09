@@ -1,19 +1,26 @@
-# ruff: noqa: ERA001, F841
 import asyncio
+import os
 
 import aiohttp
-
-from src.db.get_db import get_db
-
-# schemas
-from src.schemas import People
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorClient
 
 
-async def fetch_people() -> list[People]:
+def get_db() -> AsyncIOMotorClient:
+	"""Get the database client.
+
+	Returns
+		MongoClient: The database client.
+	"""
+	client = AsyncIOMotorClient(host=os.environ.get("DB_HOST", "localhost"), port=27017)
+	return client["turbit-t1"]
+
+
+async def fetch_people() -> list[dict]:
 	"""Fetches data from JSONPlaceholder and returns it
 
 	Returns:
-		list[People | None]: List of people
+		list[dict | None]: List of people
 	"""
 	async with (
 		aiohttp.ClientSession() as session,
@@ -25,11 +32,11 @@ async def fetch_people() -> list[People]:
 		return await response.json()
 
 
-async def fetch_posts() -> list[People]:
+async def fetch_posts() -> list[dict]:
 	"""Fetches data from JSONPlaceholder and returns it
 
 	Returns:
-		list[People | None]: List of people
+		list[dict | None]: List of posts
 	"""
 	async with (
 		aiohttp.ClientSession() as session,
@@ -41,11 +48,11 @@ async def fetch_posts() -> list[People]:
 		return await response.json()
 
 
-async def fetch_comments() -> list[People]:
+async def fetch_comments() -> list[dict]:
 	"""Fetches data from JSONPlaceholder and returns it
 
 	Returns:
-		list[People | None]: List of people
+		list[dict | None]: List of comments
 	"""
 	async with (
 		aiohttp.ClientSession() as session,
@@ -68,50 +75,47 @@ async def insert_to_db() -> None:
 	people_data = await fetch_people()
 	comments_data = await fetch_comments()
 
-	if people_data is not None and len(people_data) > 0:
-		pass
-		# for person in people_data:
-		# del person["id"]
-		# await peoplec.insert_many(people_data)
+	if (
+		not isinstance(people_data, list)
+		or not isinstance(posts_data, list)
+		or not isinstance(comments_data, list)
+	):
+		print("Something went wrong.")  # noqa: T201
+		return
 
-	if posts_data is not None and len(posts_data) > 0:
-		# I inserted the posts after people because
-		# I wanted to use the ObjectId from bson instead of a float for userId
-		# So I found the related person from the db and
-		# inserted that user's id as the userId
-		for post in posts_data:
-			owner_email = next(
-				(
-					person["email"]
-					for person in people_data
-					if person["id"] == post["userId"]
-				),
-				None,
-			)
-			person_from_db = await peoplec.find_one({"email": owner_email})
-			del post["userId"]
-			del post["id"]
-			post["userId"] = person_from_db["_id"]
-		# await postsc.insert_many(posts_data)
+	for person in people_data:
+		person["_id"] = ObjectId()
 
-	if comments_data is not None and len(comments_data) > 0:
-		# I inserted the comments after posts because
-		# I wanted to use the ObjectId from bson instead of a float for postId
-		# So I found the related post from the db and
-		# inserted that post's id as the postId
-		for comment in comments_data:
-			owner_post_title = next(
-				(
-					post["title"]
-					for post in posts_data
-					if post["id"] == comment["postId"]
-				),
-				None,
-			)
-			post_from_db = await postsc.find_one({"title": owner_post_title})
-			comment["postId"] = post_from_db["_id"]
-			del comment["id"]
-		# await commentsc.insert_many(comments_data)
+	for post in posts_data:
+		# find the owner of the post to be able to
+		# relate them correctly with ObjectId
+		owner_id = next(
+			(person["_id"] for person in people_data if person["id"] == post["userId"]),
+			None,
+		)
+		post["_id"] = ObjectId()
+		# replace userId from a float to ObjectId
+		post["userId"] = owner_id
+
+	# same as posts/people relationship replace float postId with ObjectId ones
+	for comment in comments_data:
+		owner_post_id = next(
+			(post["_id"] for post in posts_data if post["id"] == comment["postId"]),
+			None,
+		)
+		comment["postId"] = owner_post_id
+
+	# clear float ids from JSONPlaceholder after doing the matching with ObjectIds
+	def remove_id(data_list: list[dict]) -> None:
+		for item in data_list:
+			item.pop("id", None)
+
+	remove_id(people_data)
+	remove_id(posts_data)
+	remove_id(comments_data)
+	await peoplec.insert_many(people_data)
+	await postsc.insert_many(posts_data)
+	await commentsc.insert_many(comments_data)
 
 
 asyncio.run(insert_to_db())
