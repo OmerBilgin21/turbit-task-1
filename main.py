@@ -14,7 +14,7 @@ from src.schemas import Comment, People, Post
 app = FastAPI()
 
 
-@app.get("/get-people")
+@app.get("/people")
 async def get_people() -> list[People]:
 	"""Returns the people in the database
 
@@ -24,7 +24,7 @@ async def get_people() -> list[People]:
 	return await retrieve_people()
 
 
-@app.get("/get-comments")
+@app.get("/comments")
 async def get_comments() -> list[Comment]:
 	"""Returns the comments in the database
 
@@ -34,7 +34,7 @@ async def get_comments() -> list[Comment]:
 	return await retrieve_comments()
 
 
-@app.get("/get-posts")
+@app.get("/posts")
 async def get_posts() -> list[Post]:
 	"""Returns the posts in the database
 
