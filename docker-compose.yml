@@ -1,23 +1,24 @@
 services:
-  fastapi:
-    build:
-      dockerfile: Dockerfile
-    container_name: fastapi_container
-    ports:
-      - 8000:8000
-    volumes:
-      - ./src:/app
-    depends_on:
-      - mongodb
+    fastapi:
+        build:
+            dockerfile: Dockerfile
+        container_name: turbit-t-1
+        #command: ["tail", "-f", "/dev/null"]
+        ports:
+            - 8000:8000
+        depends_on:
+            - mongodb
+        environment:
+            - DB_HOST=mongodb
 
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb_container
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+    mongodb:
+        image: mongo:latest
+        container_name: mongo
+        ports:
+            - "27017:27017"
+        volumes:
+            - mongo_data:/data/db
 
 volumes:
-  mongo_data:
-    driver: local
+    mongo_data:
+        driver: local
